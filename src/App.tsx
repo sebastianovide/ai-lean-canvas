@@ -80,6 +80,8 @@ function App() {
   >([]);
   const [chatInput, setChatInput] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
+  // Track AI typing state
+  const [aiThinking, setAIThinking] = useState(false);
   // Track which item is being edited
   const [editing, setEditing] = useState<{
     sectionId: string;
@@ -121,6 +123,7 @@ function App() {
       setChatInput("");
     }
     setChatMessages((msgs) => [...msgs, userMsg]);
+    setAIThinking(true);
     setTimeout(() => {
       setChatMessages((msgs) => [
         ...msgs,
@@ -129,6 +132,7 @@ function App() {
           content: `You said: ${userMsg.content}`,
         },
       ]);
+      setAIThinking(false);
     }, 500);
   };
 
@@ -484,6 +488,31 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-100 py-6">
+      <style>{`
+        .dot-typing {
+          display: inline-block;
+        }
+        .dot-typing .dot {
+          display: inline-block;
+          width: 6px;
+          height: 6px;
+          margin: 0 1px;
+          background: #888;
+          border-radius: 50%;
+          animation: dot-typing 1s infinite linear alternate;
+        }
+        .dot-typing .dot:nth-child(2) {
+          animation-delay: 0.2s;
+        }
+        .dot-typing .dot:nth-child(3) {
+          animation-delay: 0.4s;
+        }
+        @keyframes dot-typing {
+          0% { opacity: 0.2; transform: translateY(0); }
+          50% { opacity: 1; transform: translateY(-3px); }
+          100% { opacity: 0.2; transform: translateY(0); }
+        }
+      `}</style>
       <div className="max-w-7xl mx-auto px-4 flex gap-6">
         {/* Main content (canvas) */}
         <div className="flex-1 min-w-0">
@@ -687,6 +716,20 @@ function App() {
                 </div>
               </div>
             ))}
+            {/* AI typing indicator */}
+            {aiThinking && (
+              <div className="flex justify-start">
+                <div className="px-3 py-2 rounded-lg max-w-[70%] text-sm bg-gray-200 text-gray-800">
+                  <span className="inline-block">
+                    <span className="dot-typing">
+                      <span className="dot"></span>
+                      <span className="dot"></span>
+                      <span className="dot"></span>
+                    </span>
+                  </span>
+                </div>
+              </div>
+            )}
             <div ref={chatEndRef} />
           </div>
           <form onSubmit={sendMessage} className="p-4 border-t flex gap-2">
