@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Save, Plus, Minus } from "lucide-react";
 
 interface CanvasSection {
@@ -74,6 +74,32 @@ const initialCanvas: CanvasSection[] = [
 
 function App() {
   const [canvas, setCanvas] = useState<CanvasSection[]>(initialCanvas);
+  // Chat state
+  const [chatMessages, setChatMessages] = useState<
+    { role: "user" | "bot"; content: string }[]
+  >([]);
+  const [chatInput, setChatInput] = useState("");
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to bottom on new message
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages]);
+
+  const sendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+    const userMsg = { role: "user" as const, content: chatInput };
+    setChatMessages((msgs) => [...msgs, userMsg]);
+    setChatInput("");
+    // Simulate bot reply (echo for now)
+    setTimeout(() => {
+      setChatMessages((msgs) => [
+        ...msgs,
+        { role: "bot" as const, content: `You said: ${userMsg.content}` },
+      ]);
+    }, 500);
+  };
 
   const addItem = (sectionId: string, subsectionTitle?: string) => {
     setCanvas((prev) =>
@@ -273,70 +299,123 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-100 py-6">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Lean Canvas Editor
-          </h1>
-          <p className="text-gray-600">Build your business model canvas</p>
-        </div>
+      <div className="max-w-7xl mx-auto px-4 flex gap-6">
+        {/* Main content (canvas) */}
+        <div className="flex-1 min-w-0">
+          <div className="text-center mb-6">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Lean Canvas Editor
+            </h1>
+            <p className="text-gray-600">Build your business model canvas</p>
+          </div>
 
-        {/* Lean Canvas Grid Layout */}
-        <div className="bg-white p-4 rounded-lg shadow-lg">
-          <div className="grid grid-cols-10 grid-rows-3 gap-0 h-[600px]">
-            {/* Row 1 */}
-            <div className="col-span-2 row-span-2">
-              {renderSection(getSectionById("problem"), "bg-orange-50")}
-            </div>
-            <div className="col-span-2">
-              {renderSection(getSectionById("solution"), "bg-blue-50")}
-            </div>
-            <div className="col-span-2 row-span-2">
-              {renderSection(
-                getSectionById("unique-value-proposition"),
-                "bg-yellow-50"
-              )}
-            </div>
-            <div className="col-span-2">
-              {renderSection(
-                getSectionById("unfair-advantage"),
-                "bg-purple-50"
-              )}
-            </div>
-            <div className="col-span-2 row-span-2">
-              {renderSection(
-                getSectionById("customer-segments"),
-                "bg-indigo-50"
-              )}
-            </div>
+          {/* Lean Canvas Grid Layout */}
+          <div className="bg-white p-4 rounded-lg shadow-lg">
+            <div className="grid grid-cols-10 grid-rows-3 gap-0 h-[600px]">
+              {/* Row 1 */}
+              <div className="col-span-2 row-span-2">
+                {renderSection(getSectionById("problem"), "bg-orange-50")}
+              </div>
+              <div className="col-span-2">
+                {renderSection(getSectionById("solution"), "bg-blue-50")}
+              </div>
+              <div className="col-span-2 row-span-2">
+                {renderSection(
+                  getSectionById("unique-value-proposition"),
+                  "bg-yellow-50"
+                )}
+              </div>
+              <div className="col-span-2">
+                {renderSection(
+                  getSectionById("unfair-advantage"),
+                  "bg-purple-50"
+                )}
+              </div>
+              <div className="col-span-2 row-span-2">
+                {renderSection(
+                  getSectionById("customer-segments"),
+                  "bg-indigo-50"
+                )}
+              </div>
 
-            {/* Row 2 */}
-            <div className="col-span-2">
-              {renderSection(getSectionById("key-metrics"), "bg-teal-50")}
-            </div>
-            <div className="col-span-2">
-              {renderSection(getSectionById("channels"), "bg-cyan-50")}
-            </div>
+              {/* Row 2 */}
+              <div className="col-span-2">
+                {renderSection(getSectionById("key-metrics"), "bg-teal-50")}
+              </div>
+              <div className="col-span-2">
+                {renderSection(getSectionById("channels"), "bg-cyan-50")}
+              </div>
 
-            {/* Row 3 */}
-            <div className="col-span-5">
-              {renderSection(getSectionById("cost-structure"), "bg-red-50")}
-            </div>
-            <div className="col-span-5">
-              {renderSection(getSectionById("revenue-streams"), "bg-green-50")}
+              {/* Row 3 */}
+              <div className="col-span-5">
+                {renderSection(getSectionById("cost-structure"), "bg-red-50")}
+              </div>
+              <div className="col-span-5">
+                {renderSection(
+                  getSectionById("revenue-streams"),
+                  "bg-green-50"
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="mt-6 flex justify-center">
-          <button
-            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
-            onClick={handleSaveCanvas}
-          >
-            <Save size={20} />
-            Save Canvas
-          </button>
+          <div className="mt-6 flex justify-center">
+            <button
+              className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+              onClick={handleSaveCanvas}
+            >
+              <Save size={20} />
+              Save Canvas
+            </button>
+          </div>
         </div>
+        {/* Chat sidebar */}
+        <aside className="w-80 bg-white rounded-lg shadow-lg flex flex-col h-[800px]">
+          <div className="p-4 border-b font-bold text-lg text-blue-700">
+            AI Brainstorm Chat
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-2">
+            {chatMessages.length === 0 && (
+              <div className="text-gray-400 text-sm text-center">
+                Start brainstorming with the AI!
+              </div>
+            )}
+            {chatMessages.map((msg, i) => (
+              <div
+                key={i}
+                className={`flex ${
+                  msg.role === "user" ? "justify-end" : "justify-start"
+                }`}
+              >
+                <div
+                  className={`px-3 py-2 rounded-lg max-w-[70%] text-sm whitespace-pre-line ${
+                    msg.role === "user"
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-200 text-gray-800"
+                  }`}
+                >
+                  {msg.content}
+                </div>
+              </div>
+            ))}
+            <div ref={chatEndRef} />
+          </div>
+          <form onSubmit={sendMessage} className="p-4 border-t flex gap-2">
+            <input
+              type="text"
+              className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              placeholder="Ask the AI..."
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+            />
+            <button
+              type="submit"
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
+            >
+              Send
+            </button>
+          </form>
+        </aside>
       </div>
     </div>
   );
