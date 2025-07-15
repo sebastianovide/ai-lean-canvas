@@ -366,7 +366,10 @@ function App() {
   ) => (
     <div className="space-y-2">
       {items.map((item, index) => (
-        <div key={index} className="flex items-center gap-2 group">
+        <div
+          key={index}
+          className="flex items-center gap-2 group min-w-0 overflow-x-hidden"
+        >
           <input
             type="text"
             value={item}
@@ -394,12 +397,12 @@ function App() {
             onChange={(e) =>
               updateItem(sectionId, index, e.target.value, subsectionTitle)
             }
-            className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+            className="w-0 flex-1 min-w-0 max-w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent"
             placeholder="Enter item..."
           />
           <button
             onClick={() => removeItem(sectionId, index, subsectionTitle)}
-            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700"
+            className="p-1 text-red-500 hover:text-red-700 shrink-0"
           >
             <Minus size={12} />
           </button>
@@ -419,7 +422,7 @@ function App() {
 
   const renderSection = (section: CanvasSection, className: string = "") => (
     <div
-      className={`border-2 border-gray-300 p-3 h-full flex flex-col relative ${
+      className={`border-2 border-gray-300 p-3 h-full flex flex-col relative overflow-x-hidden ${
         className || "bg-white"
       }`}
     >
