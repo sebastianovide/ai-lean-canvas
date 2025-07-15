@@ -98,17 +98,25 @@ function App() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
 
-  const sendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatInput.trim()) return;
-    const userMsg = { role: "user" as const, content: chatInput };
+  // Unified sendMessage: handles both form and programmatic messages, always same bot reply
+  const sendMessage = (eOrContent: React.FormEvent | string) => {
+    let userMsg;
+    if (typeof eOrContent === "string") {
+      userMsg = { role: "user" as const, content: eOrContent };
+    } else {
+      eOrContent.preventDefault();
+      if (!chatInput.trim()) return;
+      userMsg = { role: "user" as const, content: chatInput };
+      setChatInput("");
+    }
     setChatMessages((msgs) => [...msgs, userMsg]);
-    setChatInput("");
-    // Simulate bot reply (echo for now)
     setTimeout(() => {
       setChatMessages((msgs) => [
         ...msgs,
-        { role: "bot" as const, content: `You said: ${userMsg.content}` },
+        {
+          role: "bot" as const,
+          content: `You said: ${userMsg.content}`,
+        },
       ]);
     }, 500);
   };
@@ -240,32 +248,18 @@ function App() {
         sectionId,
         subsectionTitle
       );
-
-      setChatMessages((msgs) => [
-        ...msgs,
-        {
-          role: "user",
-          content: `Removed '${removedItem}' from${
-            subTitle ? ` ${subTitle}` : sectionTitle ? ` ${sectionTitle}` : ""
-          }. Now the list is: ${
-            updatedItems.filter((i) => i).length
-              ? updatedItems
-                  .filter((i) => i)
-                  .map((i) => `'${i}'`)
-                  .join(", ")
-              : "(empty)"
-          }`,
-        },
-      ]);
-      setTimeout(() => {
-        setChatMessages((msgs) => [
-          ...msgs,
-          {
-            role: "bot" as const,
-            content: `Let me know if you want to brainstorm more about this change!`,
-          },
-        ]);
-      }, 500);
+      sendMessage(
+        `Removed '${removedItem}' from${
+          subTitle ? ` ${subTitle}` : sectionTitle ? ` ${sectionTitle}` : ""
+        }. Now the list is: ${
+          updatedItems.filter((i) => i).length
+            ? updatedItems
+                .filter((i) => i)
+                .map((i) => `'${i}'`)
+                .join(", ")
+            : "(empty)"
+        }`
+      );
     }
   };
 
@@ -332,33 +326,20 @@ function App() {
         sectionId,
         subsectionTitle
       );
-      setChatMessages((msgs) => [
-        ...msgs,
-        {
-          role: "user",
-          content: `Added '${value}' to${
-            subTitle ? ` ${subTitle}` : sectionTitle ? ` ${sectionTitle}` : ""
-          }. Now the list is: ${
-            items.filter((i) => i).length
-              ? items
-                  .filter((i) => i)
-                  .map((i) => `'${i}'`)
-                  .join(", ")
-              : "(empty)"
-          }`,
-        },
-      ]);
+      sendMessage(
+        `Added '${value}' to${
+          subTitle ? ` ${subTitle}` : sectionTitle ? ` ${sectionTitle}` : ""
+        }. Now the list is: ${
+          items.filter((i) => i).length
+            ? items
+                .filter((i) => i)
+                .map((i) => `'${i}'`)
+                .join(", ")
+            : "(empty)"
+        }`
+      );
       setPendingNewItem(null);
     }
-    setTimeout(() => {
-      setChatMessages((msgs) => [
-        ...msgs,
-        {
-          role: "bot" as const,
-          content: `Let me know if you want to brainstorm more about this change!`,
-        },
-      ]);
-    }, 500);
     setEditing(null);
   };
 
