@@ -242,7 +242,7 @@ function App() {
     setChatMessages((msgs) => [
       ...msgs,
       {
-        role: "bot",
+        role: "user",
         content: `Removed '${removedItem}' from${
           subTitle ? ` ${subTitle}` : sectionTitle ? ` ${sectionTitle}` : ""
         }. Now the list is: ${
@@ -255,6 +255,15 @@ function App() {
         }`,
       },
     ]);
+    setTimeout(() => {
+      setChatMessages((msgs) => [
+        ...msgs,
+        {
+          role: "bot" as const,
+          content: `Let me know if you want to brainstorm more about this change!`,
+        },
+      ]);
+    }, 500);
   };
 
   // Modified updateItem: only update value, do not send bot message
@@ -310,11 +319,11 @@ function App() {
     }
     // Only send bot message if this is the pending new item and value is non-empty
     if (
-      pendingNewItem &&
-      pendingNewItem.sectionId === sectionId &&
-      pendingNewItem.index === index &&
-      pendingNewItem.subsectionTitle === subsectionTitle &&
-      value.trim() !== ""
+      value.trim() !== "" &&
+      editing &&
+      editing.sectionId === sectionId &&
+      editing.index === index &&
+      editing.subsectionTitle === subsectionTitle
     ) {
       const { sectionTitle, subsectionTitle: subTitle } = getSectionAndSubTitle(
         sectionId,
@@ -323,7 +332,7 @@ function App() {
       setChatMessages((msgs) => [
         ...msgs,
         {
-          role: "bot",
+          role: "user",
           content: `Added '${value}' to${
             subTitle ? ` ${subTitle}` : sectionTitle ? ` ${sectionTitle}` : ""
           }. Now the list is: ${
@@ -338,6 +347,15 @@ function App() {
       ]);
       setPendingNewItem(null);
     }
+    setTimeout(() => {
+      setChatMessages((msgs) => [
+        ...msgs,
+        {
+          role: "bot" as const,
+          content: `Let me know if you want to brainstorm more about this change!`,
+        },
+      ]);
+    }, 500);
     setEditing(null);
   };
 
