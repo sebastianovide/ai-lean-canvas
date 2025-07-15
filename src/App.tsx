@@ -230,40 +230,43 @@ function App() {
       });
     });
 
-    // Send chat message AFTER state update, outside of setCanvas callback
-    const updatedItems = getCurrentItems(sectionId, subsectionTitle).filter(
-      (_, i) => i !== index
-    );
-    const { sectionTitle, subsectionTitle: subTitle } = getSectionAndSubTitle(
-      sectionId,
-      subsectionTitle
-    );
+    // Only send chat message if removedItem is non-empty
+    if (removedItem.trim() !== "") {
+      // Send chat message AFTER state update, outside of setCanvas callback
+      const updatedItems = getCurrentItems(sectionId, subsectionTitle).filter(
+        (_, i) => i !== index
+      );
+      const { sectionTitle, subsectionTitle: subTitle } = getSectionAndSubTitle(
+        sectionId,
+        subsectionTitle
+      );
 
-    setChatMessages((msgs) => [
-      ...msgs,
-      {
-        role: "user",
-        content: `Removed '${removedItem}' from${
-          subTitle ? ` ${subTitle}` : sectionTitle ? ` ${sectionTitle}` : ""
-        }. Now the list is: ${
-          updatedItems.filter((i) => i).length
-            ? updatedItems
-                .filter((i) => i)
-                .map((i) => `'${i}'`)
-                .join(", ")
-            : "(empty)"
-        }`,
-      },
-    ]);
-    setTimeout(() => {
       setChatMessages((msgs) => [
         ...msgs,
         {
-          role: "bot" as const,
-          content: `Let me know if you want to brainstorm more about this change!`,
+          role: "user",
+          content: `Removed '${removedItem}' from${
+            subTitle ? ` ${subTitle}` : sectionTitle ? ` ${sectionTitle}` : ""
+          }. Now the list is: ${
+            updatedItems.filter((i) => i).length
+              ? updatedItems
+                  .filter((i) => i)
+                  .map((i) => `'${i}'`)
+                  .join(", ")
+              : "(empty)"
+          }`,
         },
       ]);
-    }, 500);
+      setTimeout(() => {
+        setChatMessages((msgs) => [
+          ...msgs,
+          {
+            role: "bot" as const,
+            content: `Let me know if you want to brainstorm more about this change!`,
+          },
+        ]);
+      }, 500);
+    }
   };
 
   // Modified updateItem: only update value, do not send bot message
