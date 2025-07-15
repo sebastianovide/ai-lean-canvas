@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Save, Plus, Minus } from "lucide-react";
+import { Save, Plus, Minus, Settings } from "lucide-react";
 
 interface CanvasSection {
   id: string;
@@ -92,6 +92,17 @@ function App() {
     subsectionTitle?: string;
     index: number;
   } | null>(null);
+  // Config state for AI service
+  const [aiConfig, setAIConfig] = useState<{
+    service: string;
+    apiKey: string;
+    ollamaUrl?: string;
+  }>({
+    service: "OpenAI",
+    apiKey: "",
+    ollamaUrl: "http://localhost:11434",
+  });
+  const [showConfig, setShowConfig] = useState(false);
 
   // Scroll to bottom on new message
   useEffect(() => {
@@ -545,9 +556,113 @@ function App() {
         </div>
         {/* Chat sidebar */}
         <aside className="w-80 bg-white rounded-lg shadow-lg flex flex-col h-[800px]">
-          <div className="p-4 border-b font-bold text-lg text-blue-700">
-            AI Brainstorm Chat
+          <div className="p-4 border-b font-bold text-lg text-blue-700 flex items-center justify-between">
+            <span>AI Brainstorm Chat</span>
+            <button
+              className="ml-2 p-1 rounded hover:bg-blue-100 text-blue-700"
+              title="Configure AI Service"
+              onClick={() => setShowConfig(true)}
+            >
+              <Settings size={20} />
+            </button>
           </div>
+          {/* Show current AI config */}
+          <div className="px-4 py-2 text-xs text-gray-600 border-b bg-gray-50">
+            <span className="font-semibold">AI: </span>
+            {aiConfig.service}
+            {aiConfig.service === "Local Ollama" && aiConfig.ollamaUrl ? (
+              <span className="ml-2">({aiConfig.ollamaUrl})</span>
+            ) : null}
+          </div>
+          {/* Config Modal/Popover */}
+          {showConfig && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+              <div className="bg-white rounded-lg shadow-lg p-6 w-80 relative">
+                <button
+                  className="absolute top-2 right-2 text-gray-400 hover:text-gray-700"
+                  onClick={() => setShowConfig(false)}
+                  aria-label="Close"
+                >
+                  ×
+                </button>
+                <h2 className="text-lg font-bold mb-4 text-blue-700">
+                  AI Service Configuration
+                </h2>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    setShowConfig(false);
+                  }}
+                  className="space-y-4"
+                >
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Service
+                    </label>
+                    <select
+                      className="w-full border rounded px-2 py-1"
+                      value={aiConfig.service}
+                      onChange={(e) =>
+                        setAIConfig((cfg) => ({
+                          ...cfg,
+                          service: e.target.value,
+                        }))
+                      }
+                    >
+                      <option value="OpenAI">OpenAI</option>
+                      <option value="Gemini">Gemini</option>
+                      <option value="Anthropic">Anthropic</option>
+                      <option value="Local Ollama">Local Ollama</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  {aiConfig.service === "Local Ollama" && (
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        Ollama URL
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full border rounded px-2 py-1"
+                        value={aiConfig.ollamaUrl || ""}
+                        onChange={(e) =>
+                          setAIConfig((cfg) => ({
+                            ...cfg,
+                            ollamaUrl: e.target.value,
+                          }))
+                        }
+                        placeholder="http://localhost:11434"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      API Key
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full border rounded px-2 py-1"
+                      value={aiConfig.apiKey}
+                      onChange={(e) =>
+                        setAIConfig((cfg) => ({
+                          ...cfg,
+                          apiKey: e.target.value,
+                        }))
+                      }
+                      placeholder="Enter API key..."
+                      disabled={aiConfig.service === "Local Ollama"}
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition-colors"
+                  >
+                    Save
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
           <div className="flex-1 overflow-y-auto p-4 space-y-2">
             {chatMessages.length === 0 && (
               <div className="text-gray-400 text-sm text-center">
