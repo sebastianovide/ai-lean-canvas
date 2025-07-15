@@ -80,6 +80,18 @@ function App() {
   >([]);
   const [chatInput, setChatInput] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
+  // Track which item is being edited
+  const [editing, setEditing] = useState<{
+    sectionId: string;
+    subsectionTitle?: string;
+    index: number;
+  } | null>(null);
+  // Track the index of the pending new item for each section/subsection
+  const [pendingNewItem, setPendingNewItem] = useState<{
+    sectionId: string;
+    subsectionTitle?: string;
+    index: number;
+  } | null>(null);
 
   // Scroll to bottom on new message
   useEffect(() => {
@@ -101,18 +113,49 @@ function App() {
     }, 500);
   };
 
+  // Helper to get section/subsection title
+  const getSectionAndSubTitle = (
+    sectionId: string,
+    subsectionTitle?: string
+  ) => {
+    const section = initialCanvas.find((s) => s.id === sectionId);
+    if (!section) return { sectionTitle: sectionId, subsectionTitle };
+    if (subsectionTitle)
+      return { sectionTitle: section.title || section.id, subsectionTitle };
+    return {
+      sectionTitle: section.title || section.id,
+      subsectionTitle: undefined,
+    };
+  };
+
+  // Helper to get current items after change
+  const getCurrentItems = (
+    sectionId: string,
+    subsectionTitle?: string,
+    canvasState = canvas
+  ) => {
+    const section = canvasState.find((s) => s.id === sectionId);
+    if (!section) return [];
+    if (subsectionTitle && section.subsections) {
+      const sub = section.subsections.find((s) => s.title === subsectionTitle);
+      return sub ? sub.items : [];
+    }
+    return section.items || [];
+  };
+
   const addItem = (sectionId: string, subsectionTitle?: string) => {
-    setCanvas((prev) =>
-      prev.map((section) => {
+    setCanvas((prev) => {
+      const next = prev.map((section) => {
         if (section.id === sectionId) {
           if (subsectionTitle && section.subsections) {
             return {
               ...section,
-              subsections: section.subsections.map((sub) =>
-                sub.title === subsectionTitle && sub.items.length < 3
-                  ? { ...sub, items: [...sub.items, ""] }
-                  : sub
-              ),
+              subsections: section.subsections.map((sub) => {
+                if (sub.title === subsectionTitle && sub.items.length < 3) {
+                  return { ...sub, items: [...sub.items, ""] };
+                }
+                return sub;
+              }),
             };
           } else if (
             !subsectionTitle &&
@@ -123,8 +166,13 @@ function App() {
           }
         }
         return section;
-      })
-    );
+      });
+      // Find the new item index (last empty string at the end)
+      const items = getCurrentItems(sectionId, subsectionTitle, next);
+      const newIndex = items.length - 1;
+      setPendingNewItem({ sectionId, subsectionTitle, index: newIndex });
+      return next;
+    });
   };
 
   const removeItem = (
@@ -132,17 +180,44 @@ function App() {
     index: number,
     subsectionTitle?: string
   ) => {
-    setCanvas((prev) =>
-      prev.map((section) => {
+    // Get the item to be removed BEFORE updating state
+    const items = getCurrentItems(sectionId, subsectionTitle);
+    const removedItem = items[index] || "";
+
+    // If the removed item is the pending new item or being edited, clear both before updating the canvas
+    if (
+      pendingNewItem &&
+      pendingNewItem.sectionId === sectionId &&
+      pendingNewItem.index === index &&
+      pendingNewItem.subsectionTitle === subsectionTitle
+    ) {
+      setPendingNewItem(null);
+    }
+    if (
+      editing &&
+      editing.sectionId === sectionId &&
+      editing.index === index &&
+      editing.subsectionTitle === subsectionTitle
+    ) {
+      setEditing(null);
+    }
+
+    // Update canvas state
+    setCanvas((prev) => {
+      return prev.map((section) => {
         if (section.id === sectionId) {
           if (subsectionTitle && section.subsections) {
             return {
               ...section,
-              subsections: section.subsections.map((sub) =>
-                sub.title === subsectionTitle
-                  ? { ...sub, items: sub.items.filter((_, i) => i !== index) }
-                  : sub
-              ),
+              subsections: section.subsections.map((sub) => {
+                if (sub.title === subsectionTitle) {
+                  return {
+                    ...sub,
+                    items: sub.items.filter((_, i) => i !== index),
+                  };
+                }
+                return sub;
+              }),
             };
           } else if (!subsectionTitle) {
             return {
@@ -152,10 +227,37 @@ function App() {
           }
         }
         return section;
-      })
+      });
+    });
+
+    // Send chat message AFTER state update, outside of setCanvas callback
+    const updatedItems = getCurrentItems(sectionId, subsectionTitle).filter(
+      (_, i) => i !== index
     );
+    const { sectionTitle, subsectionTitle: subTitle } = getSectionAndSubTitle(
+      sectionId,
+      subsectionTitle
+    );
+
+    setChatMessages((msgs) => [
+      ...msgs,
+      {
+        role: "bot",
+        content: `Removed '${removedItem}' from${
+          subTitle ? ` ${subTitle}` : sectionTitle ? ` ${sectionTitle}` : ""
+        }. Now the list is: ${
+          updatedItems.filter((i) => i).length
+            ? updatedItems
+                .filter((i) => i)
+                .map((i) => `'${i}'`)
+                .join(", ")
+            : "(empty)"
+        }`,
+      },
+    ]);
   };
 
+  // Modified updateItem: only update value, do not send bot message
   const updateItem = (
     sectionId: string,
     index: number,
@@ -193,6 +295,52 @@ function App() {
     );
   };
 
+  // New: handle when editing is finished (onBlur or Enter)
+  const handleItemEditDone = (
+    sectionId: string,
+    value: string,
+    subsectionTitle?: string,
+    index?: number
+  ) => {
+    // Prevent message if item no longer exists (was just removed)
+    const items = getCurrentItems(sectionId, subsectionTitle);
+    if (typeof index === "number" && (index < 0 || index >= items.length)) {
+      setEditing(null);
+      return;
+    }
+    // Only send bot message if this is the pending new item and value is non-empty
+    if (
+      pendingNewItem &&
+      pendingNewItem.sectionId === sectionId &&
+      pendingNewItem.index === index &&
+      pendingNewItem.subsectionTitle === subsectionTitle &&
+      value.trim() !== ""
+    ) {
+      const { sectionTitle, subsectionTitle: subTitle } = getSectionAndSubTitle(
+        sectionId,
+        subsectionTitle
+      );
+      setChatMessages((msgs) => [
+        ...msgs,
+        {
+          role: "bot",
+          content: `Added '${value}' to${
+            subTitle ? ` ${subTitle}` : sectionTitle ? ` ${sectionTitle}` : ""
+          }. Now the list is: ${
+            items.filter((i) => i).length
+              ? items
+                  .filter((i) => i)
+                  .map((i) => `'${i}'`)
+                  .join(", ")
+              : "(empty)"
+          }`,
+        },
+      ]);
+      setPendingNewItem(null);
+    }
+    setEditing(null);
+  };
+
   const renderItems = (
     items: string[],
     sectionId: string,
@@ -204,6 +352,27 @@ function App() {
           <input
             type="text"
             value={item}
+            onFocus={() => setEditing({ sectionId, subsectionTitle, index })}
+            onBlur={(e) => {
+              if (
+                editing &&
+                editing.sectionId === sectionId &&
+                editing.index === index &&
+                editing.subsectionTitle === subsectionTitle
+              ) {
+                handleItemEditDone(
+                  sectionId,
+                  e.target.value,
+                  subsectionTitle,
+                  index
+                );
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
             onChange={(e) =>
               updateItem(sectionId, index, e.target.value, subsectionTitle)
             }
