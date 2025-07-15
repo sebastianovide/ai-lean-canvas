@@ -258,6 +258,19 @@ function App() {
   const getSectionById = (id: string) =>
     canvas.find((section) => section.id === id)!;
 
+  const handleSaveCanvas = () => {
+    const json = JSON.stringify(canvas, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "lean-canvas.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 py-6">
       <div className="max-w-7xl mx-auto px-4">
@@ -316,7 +329,10 @@ function App() {
         </div>
 
         <div className="mt-6 flex justify-center">
-          <button className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm">
+          <button
+            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+            onClick={handleSaveCanvas}
+          >
             <Save size={20} />
             Save Canvas
           </button>
