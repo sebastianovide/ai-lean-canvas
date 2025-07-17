@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Save, Plus, Minus, Settings } from "lucide-react";
+import { streamText } from "ai";
+import { createOllama } from "ollama-ai-provider";
 
 interface CanvasSection {
   id: string;
@@ -76,7 +78,7 @@ function App() {
   const [canvas, setCanvas] = useState<CanvasSection[]>(initialCanvas);
   // Chat state
   const [chatMessages, setChatMessages] = useState<
-    { role: "user" | "bot"; content: string }[]
+    { role: "user" | "bot" | "assistant" | "system"; content: string }[]
   >([]);
   const [chatInput, setChatInput] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -97,12 +99,14 @@ function App() {
   // Config state for AI service
   const [aiConfig, setAIConfig] = useState<{
     service: string;
-    apiKey: string;
-    ollamaUrl?: string;
+    ollamaUrl: string;
+    ollamaModel: string;
+    apiKey: string; // Still keep for other services, though not used by Ollama
   }>({
-    service: "OpenAI",
+    service: "Local Ollama", // Default to Local Ollama
+    ollamaUrl: "http://localhost:11434/api",
+    ollamaModel: "qwen3:0.6b", // Default model
     apiKey: "",
-    ollamaUrl: "http://localhost:11434",
   });
   const [showConfig, setShowConfig] = useState(false);
 
@@ -111,29 +115,68 @@ function App() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
 
-  // Unified sendMessage: handles both form and programmatic messages, always same bot reply
-  const sendMessage = (eOrContent: React.FormEvent | string) => {
-    let userMsg;
+  // Unified sendMessage: handles both form and programmatic messages, now uses AI SDK
+  const sendMessage = async (eOrContent: React.FormEvent | string) => {
+    let userMsgContent;
     if (typeof eOrContent === "string") {
-      userMsg = { role: "user" as const, content: eOrContent };
+      userMsgContent = eOrContent;
     } else {
       eOrContent.preventDefault();
       if (!chatInput.trim()) return;
-      userMsg = { role: "user" as const, content: chatInput };
+      userMsgContent = chatInput;
       setChatInput("");
     }
-    setChatMessages((msgs) => [...msgs, userMsg]);
+
+    const newUserMessage = {
+      role: "user" as const,
+      content: userMsgContent,
+    };
+    setChatMessages((msgs) => [...msgs, newUserMessage]);
     setAIThinking(true);
-    setTimeout(() => {
+
+    try {
+      const ollama = createOllama({
+        baseURL: aiConfig.ollamaUrl, // Should include /api
+      });
+
+      const result = await streamText({
+        model: ollama(aiConfig.ollamaModel),
+        messages: [...chatMessages, newUserMessage].map((msg) => ({
+          role: msg.role === "bot" ? "assistant" : msg.role, // Map 'bot' to 'assistant' for AI SDK
+          content: msg.content,
+        })),
+      });
+
+      let fullResponse = "";
+      for await (const textDelta of result.textStream) {
+        fullResponse += textDelta;
+        setChatMessages((msgs) => {
+          const lastMsg = msgs[msgs.length - 1];
+          if (lastMsg && lastMsg.role === "bot") {
+            // Update the last message if it's the bot's partial response
+            return [
+              ...msgs.slice(0, msgs.length - 1),
+              { ...lastMsg, content: fullResponse },
+            ];
+          } else {
+            // Otherwise, add a new bot message
+            return [...msgs, { role: "bot", content: fullResponse }];
+          }
+        });
+      }
+    } catch (error) {
+      console.error("Error communicating with Ollama:", error);
       setChatMessages((msgs) => [
         ...msgs,
         {
-          role: "bot" as const,
-          content: `You said: ${userMsg.content}`,
+          role: "bot",
+          content:
+            "Sorry, I couldn't connect to the AI service. Please check your configuration and ensure Ollama is running.",
         },
       ]);
+    } finally {
       setAIThinking(false);
-    }, 500);
+    }
   };
 
   // Helper to get section/subsection title
@@ -599,8 +642,10 @@ function App() {
           <div className="px-4 py-2 text-xs text-gray-600 border-b bg-gray-50">
             <span className="font-semibold">AI: </span>
             {aiConfig.service}
-            {aiConfig.service === "Local Ollama" && aiConfig.ollamaUrl ? (
-              <span className="ml-2">({aiConfig.ollamaUrl})</span>
+            {aiConfig.service === "Local Ollama" ? (
+              <span className="ml-2">
+                ({aiConfig.ollamaUrl}, Model: {aiConfig.ollamaModel})
+              </span>
             ) : null}
           </div>
           {/* Config Modal/Popover */}
@@ -646,42 +691,62 @@ function App() {
                     </select>
                   </div>
                   {aiConfig.service === "Local Ollama" && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Ollama URL
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full border rounded px-2 py-1"
+                          value={aiConfig.ollamaUrl}
+                          onChange={(e) =>
+                            setAIConfig((cfg) => ({
+                              ...cfg,
+                              ollamaUrl: e.target.value,
+                            }))
+                          }
+                          placeholder="http://localhost:11434/api"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Ollama Model
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full border rounded px-2 py-1"
+                          value={aiConfig.ollamaModel}
+                          onChange={(e) =>
+                            setAIConfig((cfg) => ({
+                              ...cfg,
+                              ollamaModel: e.target.value,
+                            }))
+                          }
+                          placeholder="qwen3:0.6b"
+                        />
+                      </div>
+                    </>
+                  )}
+                  {aiConfig.service !== "Local Ollama" && (
                     <div>
                       <label className="block text-sm font-medium mb-1">
-                        Ollama URL
+                        API Key
                       </label>
                       <input
                         type="text"
                         className="w-full border rounded px-2 py-1"
-                        value={aiConfig.ollamaUrl || ""}
+                        value={aiConfig.apiKey}
                         onChange={(e) =>
                           setAIConfig((cfg) => ({
                             ...cfg,
-                            ollamaUrl: e.target.value,
+                            apiKey: e.target.value,
                           }))
                         }
-                        placeholder="http://localhost:11434"
+                        placeholder="Enter API key..."
                       />
                     </div>
                   )}
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      API Key
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full border rounded px-2 py-1"
-                      value={aiConfig.apiKey}
-                      onChange={(e) =>
-                        setAIConfig((cfg) => ({
-                          ...cfg,
-                          apiKey: e.target.value,
-                        }))
-                      }
-                      placeholder="Enter API key..."
-                      disabled={aiConfig.service === "Local Ollama"}
-                    />
-                  </div>
                   <button
                     type="submit"
                     className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition-colors"

@@ -2,6 +2,28 @@
 
 A simple web app to build and brainstorm Lean Canvas business models, featuring an AI-powered chat sidebar for brainstorming.
 
+## Prerequisite: Running Ollama with qwen3:0.6b
+
+To use the AI-powered features, you must have Ollama running locally and the qwen3:0.6b model installed:
+
+1. **Install and Start Ollama**
+
+   - Download and install Ollama from [https://ollama.com/download](https://ollama.com/download).
+   - Start Ollama by running:
+     ```bash
+     ollama serve
+     ```
+
+2. **Install the qwen3:0.6b Model**
+
+   - With Ollama running, install the model by running:
+     ```bash
+     ollama pull qwen3:0.6b
+     ```
+
+3. **Keep Ollama Running**
+   - Make sure Ollama stays running in the background while you use the app.
+
 ## How to Run
 
 1. Install dependencies:
