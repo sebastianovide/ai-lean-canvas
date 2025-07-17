@@ -99,6 +99,8 @@ function App() {
     subsectionTitle?: string;
     index: number;
   } | null>(null);
+  // Ref for input elements
+  const inputRefs = useRef<Record<string, HTMLInputElement[]>>({});
   // Config state for AI service
   const [aiConfig, setAIConfig] = useState<{
     service: string;
@@ -233,6 +235,10 @@ function App() {
   };
 
   const addItem = (sectionId: string, subsectionTitle?: string) => {
+    // Get current items to determine new index
+    const items = getCurrentItems(sectionId, subsectionTitle);
+    const newIndex = items.length;
+    
     setCanvas((prev) => {
       const next = prev.map((section) => {
         if (section.id === sectionId) {
@@ -256,12 +262,19 @@ function App() {
         }
         return section;
       });
-      // Find the new item index (last empty string at the end)
-      const items = getCurrentItems(sectionId, subsectionTitle, next);
-      const newIndex = items.length - 1;
       setPendingNewItem({ sectionId, subsectionTitle, index: newIndex });
       return next;
     });
+    
+    // After canvas update, focus the new input
+    setTimeout(() => {
+      const key = subsectionTitle ? `${sectionId}-${subsectionTitle}` : sectionId;
+      if (inputRefs.current[key] && inputRefs.current[key][newIndex]) {
+        inputRefs.current[key][newIndex].focus();
+        inputRefs.current[key][newIndex].select();
+      }
+      setEditing({ sectionId, subsectionTitle, index: newIndex });
+    }, 0);
   };
 
   const removeItem = (
@@ -437,8 +450,24 @@ function App() {
         >
           <input
             type="text"
+            ref={(el) => {
+              const key = subsectionTitle ? `${sectionId}-${subsectionTitle}` : sectionId;
+              if (!inputRefs.current[key]) {
+                inputRefs.current[key] = [];
+              }
+              if (el) {
+                inputRefs.current[key][index] = el;
+              }
+            }}
             value={item}
-            onFocus={() => setEditing({ sectionId, subsectionTitle, index })}
+            onFocus={(e) => {
+              // If this is a new empty item, set editing state immediately
+              if (item === "") {
+                setEditing({ sectionId, subsectionTitle, index });
+                // Select all text to make it easier to start typing
+                (e.target as HTMLInputElement).select();
+              }
+            }}
             onBlur={(e) => {
               if (
                 editing &&
