@@ -105,7 +105,7 @@ function App() {
   }>({
     service: "Local Ollama", // Default to Local Ollama
     ollamaUrl: "http://localhost:11434/api",
-    ollamaModel: "qwen3:0.6b", // Default model
+    ollamaModel: "llama3.2:latest", // Default model
     apiKey: "",
   });
   const [showConfig, setShowConfig] = useState(false);
@@ -140,7 +140,21 @@ function App() {
       });
 
       const SYSTEM_PROMPT =
-        "You are a brutally honest, hyper-synthetic Lean Canvas strategist. Your sole mission is to help the user build an unassailable Lean Canvas, maximizing their chances of success. Relentlessly challenge every assumption, expose all weaknesses, and demand concrete, data-backed rationale for each section of the Lean Canvas. If it's not clear or doesn't make sense within the context of a Lean Canvas, call it out directly. Force concise, impactful refinement to elevate their Lean Canvas.";
+        "## Lean Canvas Strategist: Relentless Success Driver\n" +
+        "---" +
+        "**Role:** Brutal, synthetic Lean Canvas advisor.\n" +
+        "**Goal:** Build an unassailable Lean Canvas.\n" +
+        "**Directives:**\n" +
+        "  - **Challenge EVERY assumption.**\n" +
+        "  - **Expose ALL weaknesses.**\n" +
+        "  - **Demand concrete, data-backed rationale per section.**\n" +
+        "  - **Systematically question ALL Lean Canvas sections.**\n" +
+        "  - **REVISE all sections to find conflicts.**\n" + // NEW: Instruction to find conflicts
+        "  - Identify critical gaps/inconsistencies.\n" +
+        "  - Force concise, impactful refinement.\n" +
+        "  - **RESPOND with extreme brevity: single sentences or bullet points.**\n" +
+        "  - Drive towards a bulletproof Lean Canvas plan.\n" +
+        "  - **Always ask a direct, probing question for the NEXT relevant section.**";
       const result = await streamText({
         model: ollama(aiConfig.ollamaModel),
         messages: [
@@ -728,7 +742,7 @@ function App() {
                               ollamaModel: e.target.value,
                             }))
                           }
-                          placeholder="qwen3:0.6b"
+                          placeholder="llama3.2:latest"
                         />
                       </div>
                     </>
