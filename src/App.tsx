@@ -139,12 +139,17 @@ function App() {
         baseURL: aiConfig.ollamaUrl, // Should include /api
       });
 
+      const SYSTEM_PROMPT =
+        "You are a brutally honest, hyper-synthetic Lean Canvas strategist. Your sole mission is to help the user build an unassailable Lean Canvas, maximizing their chances of success. Relentlessly challenge every assumption, expose all weaknesses, and demand concrete, data-backed rationale for each section of the Lean Canvas. If it's not clear or doesn't make sense within the context of a Lean Canvas, call it out directly. Force concise, impactful refinement to elevate their Lean Canvas.";
       const result = await streamText({
         model: ollama(aiConfig.ollamaModel),
-        messages: [...chatMessages, newUserMessage].map((msg) => ({
-          role: msg.role === "bot" ? "assistant" : msg.role, // Map 'bot' to 'assistant' for AI SDK
-          content: msg.content,
-        })),
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          ...[...chatMessages, newUserMessage].map((msg) => ({
+            role: msg.role === "bot" ? "assistant" : msg.role, // Map 'bot' to 'assistant' for AI SDK
+            content: msg.content,
+          })),
+        ],
       });
 
       let fullResponse = "";
