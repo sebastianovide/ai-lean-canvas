@@ -74,6 +74,9 @@ const initialCanvas: CanvasSection[] = [
   },
 ];
 
+// Add the constant for the default Ollama model
+const DEFAULT_OLLAMA_MODEL = "qwen3:0.6b";
+
 function App() {
   const [canvas, setCanvas] = useState<CanvasSection[]>(initialCanvas);
   // Chat state
@@ -105,7 +108,7 @@ function App() {
   }>({
     service: "Local Ollama", // Default to Local Ollama
     ollamaUrl: "http://localhost:11434/api",
-    ollamaModel: "deepseek-r1:latest", // Default model
+    ollamaModel: DEFAULT_OLLAMA_MODEL, // Default model
     apiKey: "",
   });
   const [showConfig, setShowConfig] = useState(false);
@@ -743,7 +746,7 @@ function App() {
                               ollamaModel: e.target.value,
                             }))
                           }
-                          placeholder="deepseek-r1:latest"
+                          placeholder={DEFAULT_OLLAMA_MODEL}
                         />
                       </div>
                     </>
