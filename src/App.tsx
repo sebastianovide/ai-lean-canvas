@@ -105,7 +105,7 @@ function App() {
   }>({
     service: "Local Ollama", // Default to Local Ollama
     ollamaUrl: "http://localhost:11434/api",
-    ollamaModel: "llama3.2:latest", // Default model
+    ollamaModel: "deepseek-r1:latest", // Default model
     apiKey: "",
   });
   const [showConfig, setShowConfig] = useState(false);
@@ -152,6 +152,7 @@ function App() {
         "  - **REVISE all sections to find conflicts.**\n" + // NEW: Instruction to find conflicts
         "  - Identify critical gaps/inconsistencies.\n" +
         "  - Force concise, impactful refinement.\n" +
+        "  - There are up to 3 short sentences per section.\n" +
         "  - **RESPOND with extreme brevity: single sentences or bullet points.**\n" +
         "  - Drive towards a bulletproof Lean Canvas plan.\n" +
         "  - **Always ask a direct, probing question for the NEXT relevant section.**";
@@ -742,7 +743,7 @@ function App() {
                               ollamaModel: e.target.value,
                             }))
                           }
-                          placeholder="llama3.2:latest"
+                          placeholder="deepseek-r1:latest"
                         />
                       </div>
                     </>

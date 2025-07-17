@@ -2,9 +2,9 @@
 
 A simple web app to build and brainstorm Lean Canvas business models, featuring an AI-powered chat sidebar for brainstorming.
 
-## Prerequisite: Running Ollama with qwen3:0.6b
+## Prerequisite: Running Ollama with deepseek-r1
 
-To use the AI-powered features, you must have Ollama running locally and the qwen3:0.6b model installed:
+To use the AI-powered features, you must have Ollama running locally and thedeepseek-r1 model installed:
 
 1. **Install and Start Ollama**
 
@@ -14,11 +14,11 @@ To use the AI-powered features, you must have Ollama running locally and the qwe
      ollama serve
      ```
 
-2. **Install the qwen3:0.6b Model**
+2. **Install the deepseek-r1 Model**
 
    - With Ollama running, install the model by running:
      ```bash
-     ollama pull qwen3:0.6b
+     ollama pull deepseek-r1
      ```
 
 3. **Keep Ollama Running**
