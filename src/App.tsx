@@ -491,7 +491,7 @@ function App() {
             onChange={(e) =>
               updateItem(sectionId, index, e.target.value, subsectionTitle)
             }
-            className="w-0 flex-1 min-w-0 max-w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+            className="w-full max-w-[calc(100%-32px)] px-2 py-1 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset focus:border-blue-500 truncate"
             placeholder="Enter item..."
           />
           <button
