@@ -1,3 +1,5 @@
+> **Note:** This project was created entirely using AI coding (no human intervention in the code). The codebase has not yet been cleaned up or refactored, as the goal is to observe how the code evolves when generated solely by AI.
+
 # AI Lean Canvas
 
 A simple web app to build and brainstorm Lean Canvas business models, featuring an AI-powered chat sidebar for brainstorming.

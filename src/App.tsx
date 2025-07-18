@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Save, Plus, Minus, Settings } from "lucide-react";
 import { streamText } from "ai";
 import { createOllama } from "ollama-ai-provider";
+import { v4 as uuidv4 } from "uuid";
 
 interface CanvasSection {
   id: string;
@@ -75,13 +76,22 @@ const initialCanvas: CanvasSection[] = [
 ];
 
 // Add the constant for the default Ollama model
-const DEFAULT_OLLAMA_MODEL = "qwen3:0.6b";
+// Thinking models
+// const DEFAULT_OLLAMA_MODEL = "qwen3:0.6b";
+const DEFAULT_OLLAMA_MODEL = "qwen3:4b";
+
+// No thinking models
+// const DEFAULT_OLLAMA_MODEL = "llama3.2:latest";
 
 function App() {
   const [canvas, setCanvas] = useState<CanvasSection[]>(initialCanvas);
   // Chat state
   const [chatMessages, setChatMessages] = useState<
-    { role: "user" | "bot" | "assistant" | "system"; content: string }[]
+    {
+      id: string;
+      role: "user" | "bot" | "assistant" | "system";
+      content: string;
+    }[]
   >([]);
   const [chatInput, setChatInput] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -114,6 +124,10 @@ function App() {
     apiKey: "",
   });
   const [showConfig, setShowConfig] = useState(false);
+  // Track open/closed state for each Collapsible in chat (keyed by message and part index)
+  const [collapsibleOpen, setCollapsibleOpen] = useState<
+    Record<string, boolean>
+  >({});
 
   // Scroll to bottom on new message
   useEffect(() => {
@@ -133,6 +147,7 @@ function App() {
     }
 
     const newUserMessage = {
+      id: uuidv4(),
       role: "user" as const,
       content: userMsgContent,
     };
@@ -173,19 +188,25 @@ function App() {
       });
 
       let fullResponse = "";
+      let botMsgId: string | null = null;
       for await (const textDelta of result.textStream) {
         fullResponse += textDelta;
         setChatMessages((msgs) => {
           const lastMsg = msgs[msgs.length - 1];
           if (lastMsg && lastMsg.role === "bot") {
             // Update the last message if it's the bot's partial response
+            botMsgId = lastMsg.id;
             return [
               ...msgs.slice(0, msgs.length - 1),
               { ...lastMsg, content: fullResponse },
             ];
           } else {
-            // Otherwise, add a new bot message
-            return [...msgs, { role: "bot", content: fullResponse }];
+            // Otherwise, add a new bot message with a unique id
+            botMsgId = uuidv4();
+            return [
+              ...msgs,
+              { id: botMsgId, role: "bot", content: fullResponse },
+            ];
           }
         });
       }
@@ -194,6 +215,7 @@ function App() {
       setChatMessages((msgs) => [
         ...msgs,
         {
+          id: uuidv4(),
           role: "bot",
           content:
             "Sorry, I couldn't connect to the AI service. Please check your configuration and ensure Ollama is running.",
@@ -238,7 +260,7 @@ function App() {
     // Get current items to determine new index
     const items = getCurrentItems(sectionId, subsectionTitle);
     const newIndex = items.length;
-    
+
     setCanvas((prev) => {
       const next = prev.map((section) => {
         if (section.id === sectionId) {
@@ -265,10 +287,12 @@ function App() {
       setPendingNewItem({ sectionId, subsectionTitle, index: newIndex });
       return next;
     });
-    
+
     // After canvas update, focus the new input
     setTimeout(() => {
-      const key = subsectionTitle ? `${sectionId}-${subsectionTitle}` : sectionId;
+      const key = subsectionTitle
+        ? `${sectionId}-${subsectionTitle}`
+        : sectionId;
       if (inputRefs.current[key] && inputRefs.current[key][newIndex]) {
         inputRefs.current[key][newIndex].focus();
         inputRefs.current[key][newIndex].select();
@@ -451,7 +475,9 @@ function App() {
           <input
             type="text"
             ref={(el) => {
-              const key = subsectionTitle ? `${sectionId}-${subsectionTitle}` : sectionId;
+              const key = subsectionTitle
+                ? `${sectionId}-${subsectionTitle}`
+                : sectionId;
               if (!inputRefs.current[key]) {
                 inputRefs.current[key] = [];
               }
@@ -580,6 +606,50 @@ function App() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
+
+  // Collapsible component for <think> blocks
+  function Collapsible({
+    label,
+    children,
+    open,
+    onToggle,
+    forceOpenNoToggle,
+  }: {
+    label: string;
+    children: React.ReactNode;
+    open: boolean;
+    onToggle: () => void;
+    forceOpenNoToggle?: boolean;
+  }) {
+    if (forceOpenNoToggle) {
+      return (
+        <div className="my-1">
+          <div className="text-xs text-blue-600 font-semibold mb-1">
+            {label}
+          </div>
+          <div className="mt-1 p-2 bg-gray-100 border border-gray-200 rounded text-xs whitespace-pre-line">
+            {children}
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="my-1">
+        <button
+          type="button"
+          className="text-xs text-blue-600 underline hover:text-blue-800 focus:outline-none"
+          onClick={onToggle}
+        >
+          {open ? "▼" : "▶"} {label}
+        </button>
+        {open && (
+          <div className="mt-1 p-2 bg-gray-100 border border-gray-200 rounded text-xs whitespace-pre-line">
+            {children}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 py-6">
@@ -815,24 +885,87 @@ function App() {
                 Start brainstorming with the AI!
               </div>
             )}
-            {chatMessages.map((msg, i) => (
-              <div
-                key={i}
-                className={`flex ${
-                  msg.role === "user" ? "justify-end" : "justify-start"
-                }`}
-              >
+            {chatMessages.map((msg, idx, arr) => {
+              // Enhanced: Split message content by <think>...</think> blocks, handling incomplete blocks
+              const parts: Array<{
+                type: "text" | "think";
+                content: string;
+                thinkKey?: string;
+              }> = [];
+              const regex = /<think>([\s\S]*?)(<\/think>|$)/g;
+              let lastIndex = 0;
+              let match;
+              while ((match = regex.exec(msg.content)) !== null) {
+                if (match.index > lastIndex) {
+                  parts.push({
+                    type: "text",
+                    content: msg.content.slice(lastIndex, match.index),
+                  });
+                }
+                // Use the start index of the <think> block as a stable key
+                parts.push({
+                  type: "think",
+                  content: match[1],
+                  thinkKey: `${msg.id}-${match.index}`,
+                });
+                lastIndex = regex.lastIndex;
+                if (match[2] !== "</think>") break;
+              }
+              if (lastIndex < msg.content.length) {
+                parts.push({
+                  type: "text",
+                  content: msg.content.slice(lastIndex),
+                });
+              }
+              // Determine if this is the last message and a bot message and AI is thinking (streaming)
+              const isStreamingBotMsg =
+                aiThinking && idx === arr.length - 1 && msg.role === "bot";
+              return (
                 <div
-                  className={`px-3 py-2 rounded-lg max-w-[70%] text-sm whitespace-pre-line ${
-                    msg.role === "user"
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-200 text-gray-800"
+                  key={msg.id}
+                  className={`flex ${
+                    msg.role === "user" ? "justify-end" : "justify-start"
                   }`}
                 >
-                  {msg.content}
+                  <div
+                    className={`px-3 py-2 rounded-lg max-w-[70%] text-sm whitespace-pre-line ${
+                      msg.role === "user"
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-200 text-gray-800"
+                    }`}
+                  >
+                    {parts.map((part, partIdx) =>
+                      part.type === "think" ? (
+                        <Collapsible
+                          key={part.thinkKey}
+                          label="AI internal reasoning"
+                          open={
+                            isStreamingBotMsg
+                              ? true
+                              : !!collapsibleOpen[part.thinkKey!]
+                          }
+                          onToggle={() => {
+                            if (!isStreamingBotMsg) {
+                              setCollapsibleOpen((prev) => ({
+                                ...prev,
+                                [part.thinkKey!]: !prev[part.thinkKey!],
+                              }));
+                            }
+                          }}
+                          forceOpenNoToggle={isStreamingBotMsg}
+                        >
+                          {part.content.trim()}
+                        </Collapsible>
+                      ) : (
+                        part.content && (
+                          <span key={partIdx}>{part.content}</span>
+                        )
+                      )
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {/* AI typing indicator */}
             {aiThinking && (
               <div className="flex justify-start">
