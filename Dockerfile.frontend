@@ -1,0 +1,54 @@
+# Use a specific Node.js version for better reproducibility
+FROM node
+
+WORKDIR /app
+
+# Copy package.json and package-lock.json first to leverage Docker's build cache.
+# This step only runs if these files change, speeding up subsequent builds.
+COPY package.json package-lock.json ./
+
+# Install dependencies
+# Using npm ci for clean installs in CI/CD environments, but npm install is fine too.
+RUN npm install
+
+# ARG to receive the build argument from docker-compose
+ARG VITE_OLLAMA_MODEL_BUILD
+
+# Convert the build ARG into an ENV variable.
+# This makes VITE_OLLAMA_MODEL available during the 'npm run build' step
+# and also in the final running container.
+ENV VITE_OLLAMA_MODEL=${VITE_OLLAMA_MODEL_BUILD}
+
+# --- ADD THESE DEBUG LINES ---
+# RUN echo "--- Docker Build Environment Variables Check ---"
+# RUN printenv | grep VITE_OLLAMA_MODEL
+# RUN echo "--- End Docker Build Environment Variables Check ---"
+# --- END DEBUG LINES ---
+
+# Copy the rest of your application code
+COPY . .
+
+# Build the frontend application.
+# This command should produce the static assets in the 'dist' directory.
+# --- IMPORTANT CHANGE HERE: Explicitly pass the VITE_OLLAMA_MODEL to npm run build ---
+RUN VITE_OLLAMA_MODEL=${VITE_OLLAMA_MODEL} npm run build
+# --- END IMPORTANT CHANGE ---
+
+# Install 'serve' globally. This is needed if 'serve' is not a project dependency.
+RUN npm install -g serve
+
+# Expose the port that the 'serve' command will listen on.
+# By default, 'serve -s dist' listens on port 3000.
+EXPOSE 3000
+
+# Define an environment variable for debug mode.
+ENV DEBUG_MODE=false
+
+# The command to run when the container starts.
+CMD if [ "$DEBUG_MODE" = "true" ]; then \
+    echo "Waiting for user to start the app for debugging..." && \
+    tail -f /dev/null; \
+else \
+    # Explicitly tell serve to listen on port 3000
+    serve -s dist -l 3000; \
+fi

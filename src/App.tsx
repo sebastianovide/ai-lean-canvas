@@ -75,13 +75,9 @@ const initialCanvas: CanvasSection[] = [
   },
 ];
 
-// Add the constant for the default Ollama model
-// Thinking models
-// const DEFAULT_OLLAMA_MODEL = "qwen3:0.6b";
-const DEFAULT_OLLAMA_MODEL = "qwen3:4b";
-
-// No thinking models
-// const DEFAULT_OLLAMA_MODEL = "llama3.2:latest";
+// Get Ollama configuration from environment variables
+const DEFAULT_OLLAMA_MODEL = import.meta.env.VITE_OLLAMA_MODEL;
+const DEFAULT_OLLAMA_URL = import.meta.env.VITE_OLLAMA_URL || "http://localhost:11434/api";
 
 function App() {
   const [canvas, setCanvas] = useState<CanvasSection[]>(initialCanvas);
@@ -828,7 +824,7 @@ function App() {
                               ollamaUrl: e.target.value,
                             }))
                           }
-                          placeholder="http://localhost:11434/api"
+                          placeholder={DEFAULT_OLLAMA_URL}
                         />
                       </div>
                       <div>

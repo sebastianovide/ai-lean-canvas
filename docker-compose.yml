@@ -1,0 +1,49 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        # Now ${VITE_OLLAMA_MODEL} will be resolved from the .env file
+        VITE_OLLAMA_MODEL_BUILD: ${VITE_OLLAMA_MODEL} # Added fallback for robustness
+    # --- REMOVE THIS LINE ---
+    # env_file:
+    #   - webapp.env
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_OLLAMA_URL=http://localhost:11434/api
+    restart: unless-stopped
+    depends_on:
+      - ollama
+    networks:
+      - ollama-network
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    # --- REMOVE THIS LINE ---
+    # env_file:
+    #   - webapp.env
+    ports:
+      - "11434:11434"
+    volumes:
+      - .:/app
+      - ollama_data:/root/.ollama
+    environment:
+      OLLAMA_KEEP_ALIVE: 24h
+      OLLAMA_HOST: 0.0.0.0
+      OLLAMA_MODELS: /root/.ollama/models
+      OLLAMA_MODEL_DEFAULT: ${VITE_OLLAMA_MODEL}
+    entrypoint: ["/bin/bash", "/app/entrypoint.sh"]
+    restart: unless-stopped
+    networks:
+      - ollama-network
+
+
+networks:
+  ollama-network:
+    external: false
+
+volumes:
+  ollama_data:
