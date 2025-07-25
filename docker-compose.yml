@@ -4,11 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
       args:
-        # Now ${VITE_OLLAMA_MODEL} will be resolved from the .env file
-        VITE_OLLAMA_MODEL_BUILD: ${VITE_OLLAMA_MODEL} # Added fallback for robustness
-    # --- REMOVE THIS LINE ---
-    # env_file:
-    #   - webapp.env
+        VITE_OLLAMA_MODEL_BUILD: ${VITE_OLLAMA_MODEL}
     ports:
       - "3000:3000"
     environment:
@@ -22,9 +18,6 @@ services:
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
-    # --- REMOVE THIS LINE ---
-    # env_file:
-    #   - webapp.env
     ports:
       - "11434:11434"
     volumes:
@@ -41,9 +34,29 @@ services:
       - ollama-network
 
 
+ # docker run -d -p 3000:8080 -v ollama:/root/.ollama -v open-webui:/app/backend/data --name open-webui --restart always ghcr.io/open-webui/open-webui:ollama
+
+
+  open-webui: # New service for Open WebUI
+    image: ghcr.io/open-webui/open-webui:ollama
+    container_name: open-webui
+    ports:
+      - "8080:8080" # Open WebUI will be accessible on port 8080
+    volumes:
+      - ollama_data:/root/.ollama # Mounts the Ollama data volume for model access
+      - open_webui_data:/app/backend/data # Dedicated volume for Open WebUI's data (e.g., chat history, user settings)
+    environment: # Added environment variable
+      - WEBUI_HOST=0.0.0.0 # Ensures the application binds to all network interfaces
+    restart: unless-stopped
+    depends_on:
+      - ollama # Ensures Ollama starts before Open WebUI
+    networks:
+      - ollama-network
+
 networks:
   ollama-network:
     external: false
 
 volumes:
-  ollama_data:
+  ollama_data: # Volume for Ollama models and data
+  open_webui_data: # New volume for Open WebUI's backend data
