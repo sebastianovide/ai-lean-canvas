@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
       args:
-        VITE_OLLAMA_MODEL_BUILD: ${VITE_OLLAMA_MODEL}
+        VITE_OLLAMA_MODEL_BUILD: ${VITE_OLLAMA_MODEL:-deepseek-r1:latest}
     ports:
       - "3000:3000"
     environment:
@@ -27,7 +27,7 @@ services:
       OLLAMA_KEEP_ALIVE: 24h
       OLLAMA_HOST: 0.0.0.0
       OLLAMA_MODELS: /root/.ollama/models
-      OLLAMA_MODEL_DEFAULT: ${VITE_OLLAMA_MODEL}
+      OLLAMA_MODEL_DEFAULT: ${VITE_OLLAMA_MODEL:-deepseek-r1:latest}
     entrypoint: ["/bin/bash", "/app/entrypoint.sh"]
     restart: unless-stopped
     networks:

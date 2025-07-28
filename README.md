@@ -4,42 +4,51 @@
 
 A simple web app to build and brainstorm Lean Canvas business models, featuring an AI-powered chat sidebar for brainstorming.
 
-## Docker Deployment
+## Quick Start
 
-To run the application using Docker, follow these steps:
+The application uses deepseek-r1:latest as its default model. To get started, simply run:
 
-1. Set the Ollama model environment variable:
+```bash
+docker-compose up
+```
+
+This will start the application with all default settings. The frontend will be available at http://localhost:3000.
+
+You can find more models available in the [Ollama model search page](https://ollama.com/search?c=thinking).
+
+## Custom Model Setup
+
+If you want to use a different model, you can set the `VITE_OLLAMA_MODEL` environment variable and rebuild the containers:
+
+1. Set the model environment variable:
    - On Windows:
      ```powershell
-     $env:VITE_OLLAMA_MODEL="llama3"
+     $env:VITE_OLLAMA_MODEL="your-model-name"
      ```
    - On Linux/Mac:
      ```bash
-     export VITE_OLLAMA_MODEL=llama3
+     export VITE_OLLAMA_MODEL=your-model-name
      ```
 
-2. Run the application:
+2. Rebuild and run the containers:
    ```bash
    docker-compose up --build
    ```
-   This will:
-   - Start the frontend React application in development mode
-   - Pull and run the official Ollama service
-   - Pull the qwen3:4b model (or specify a different model using OLLAMA_MODEL environment variable)
-   
-3. Access the application:
-   - Open http://localhost:3000 in your browser
-   - The Ollama service will be available at http://localhost:11434
-   - Access the Open WebUI interface at http://localhost:8080 for a rich, interactive LLM experience (learn more at [Open WebUI](https://github.com/open-webui/open-webui))
+
+## Accessing the Application
+
+Once running, you can access:
+- The main application at http://localhost:3000
+- The Ollama service at http://localhost:11434
+- The Open WebUI interface at http://localhost:8080 for a rich, interactive LLM experience (learn more at [Open WebUI](https://github.com/open-webui/open-webui))
 
 ## Environment Configuration
 
-If you prefer instead of setting the environment variable, you can use a `.env` file.
+If you prefer, you can also set the model configuration using a `.env` file:
 
-1. Using a `.env` file:
-   - Copy the `.env-example` file to `.env`
-   - Add the following line:
-     ```
-     VITE_OLLAMA_MODEL=llama3
-     ```
-   - The application will automatically use this model when started
+1. Copy the `.env-example` file to `.env`
+2. Add or modify the following line:
+   ```
+   VITE_OLLAMA_MODEL=your-model-name
+   ```
+3. Run `docker-compose up --build` to apply the changes
