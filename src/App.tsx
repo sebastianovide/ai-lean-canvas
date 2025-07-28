@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Save, Plus, Minus, Settings } from "lucide-react";
 import { streamText } from "ai";
 import { createOllama } from "ollama-ai-provider";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { v4 as uuidv4 } from "uuid";
 
 interface CanvasSection {
@@ -112,11 +113,13 @@ function App() {
     service: string;
     ollamaUrl: string;
     ollamaModel: string;
-    apiKey: string; // Still keep for other services, though not used by Ollama
+    geminiModel: string;
+    apiKey: string;
   }>({
     service: "Local Ollama", // Default to Local Ollama
     ollamaUrl: "http://localhost:11434/api",
     ollamaModel: DEFAULT_OLLAMA_MODEL, // Default model
+    geminiModel: "gemini-pro",
     apiKey: "",
   });
   const [showConfig, setShowConfig] = useState(false);
@@ -151,9 +154,19 @@ function App() {
     setAIThinking(true);
 
     try {
-      const ollama = createOllama({
-        baseURL: aiConfig.ollamaUrl, // Should include /api
-      });
+      let model;
+      if (aiConfig.service === "Gemini") {
+        if (!aiConfig.apiKey) {
+          throw new Error("Gemini API key is required.");
+        }
+        const google = createGoogleGenerativeAI({ apiKey: aiConfig.apiKey });
+        model = google(aiConfig.geminiModel as any);
+      } else {
+        const ollama = createOllama({
+          baseURL: aiConfig.ollamaUrl, // Should include /api
+        });
+        model = ollama(aiConfig.ollamaModel);
+      }
 
       const SYSTEM_PROMPT =
         "## Lean Canvas Strategist: Relentless Success Driver\n" +
@@ -173,7 +186,7 @@ function App() {
         "  - Drive towards a bulletproof Lean Canvas plan.\n" +
         "  - **Always ask a direct, probing question for the NEXT relevant section.**";
       const result = await streamText({
-        model: ollama(aiConfig.ollamaModel),
+        model: model,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           ...[...chatMessages, newUserMessage].map((msg) => ({
@@ -207,14 +220,16 @@ function App() {
         });
       }
     } catch (error) {
-      console.error("Error communicating with Ollama:", error);
+      console.error("Error communicating with AI Service:", error);
       setChatMessages((msgs) => [
         ...msgs,
         {
           id: uuidv4(),
           role: "bot",
           content:
-            "Sorry, I couldn't connect to the AI service. Please check your configuration and ensure Ollama is running.",
+            error instanceof Error
+              ? error.message
+              : "Sorry, I couldn't connect to the AI service. Please check your configuration and ensure all services are running.",
         },
       ]);
     } finally {
@@ -845,6 +860,25 @@ function App() {
                         />
                       </div>
                     </>
+                  )}
+                  {aiConfig.service === "Gemini" && (
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        Gemini Model
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full border rounded px-2 py-1"
+                        value={aiConfig.geminiModel}
+                        onChange={(e) =>
+                          setAIConfig((cfg) => ({
+                            ...cfg,
+                            geminiModel: e.target.value,
+                          }))
+                        }
+                        placeholder="gemini-pro"
+                      />
+                    </div>
                   )}
                   {aiConfig.service !== "Local Ollama" && (
                     <div>

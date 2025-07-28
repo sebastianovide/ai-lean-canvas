@@ -16,6 +16,10 @@ This will start the application with all default settings. The frontend will be 
 
 You can find more models available in the [Ollama model search page](https://ollama.com/search?c=thinking).
 
+## API Providers
+
+This project can be configured to use different AI providers. At the moment, it supports the Gemini and Ollama APIs. The other API providers have not been fixed yet.
+
 ## Custom Model Setup
 
 If you want to use a different model, you can set the `VITE_OLLAMA_MODEL` environment variable and rebuild the containers:
